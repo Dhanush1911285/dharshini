@@ -1,5 +1,20 @@
-<h2>S.K Login</h2>
-<form method="POST" action="/login">
-  <input name="username" placeholder="Enter name" required>
-  <button type="submit">Login</button>
-</form>
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Login</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+
+<div class="login-box">
+    <h1>Welcome 💜</h1>
+    <p>Login to continue</p>
+
+    <form method="POST" action="/login">
+        <input type="text" name="username" placeholder="Enter your name" required>
+        <button type="submit">Login</button>
+    </form>
+</div>
+
+</body>
+</html>
