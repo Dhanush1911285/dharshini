@@ -41,7 +41,7 @@ input {
     outline: none;
 }
 
-/* input focus effect */
+/* input focus */
 input:focus {
     border: 2px solid #22c55e;
 }
@@ -73,7 +73,7 @@ a:hover {
     text-decoration: underline;
 }
 
-/* bottom text (signup/login switch) */
+/* bottom text */
 .switch-text {
     margin-top: 15px;
     font-size: 14px;

@@ -1,3 +1,13 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Signup</title>
+
+    <!-- ✅ Link CSS properly -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+
 <div class="login-box">
     <h1>Create Account</h1>
     <p>Join Delulu Snap today</p>
@@ -18,10 +28,10 @@
         <p style="color:red;">{{ error }}</p>
     {% endif %}
 
-    <form method="POST">
+    <!-- ✅ IMPORTANT: action matches Flask route -->
+    <form method="POST" action="/signup">
         <input type="text" name="username" placeholder="Username" required>
 
-        <!-- 🔥 IMPORTANT: name must match Flask -->
         <input type="email" name="email" placeholder="Email address" required>
 
         <input type="password" name="password" placeholder="Password" required>
@@ -33,3 +43,6 @@
         Already have an account? <a href="/login">Login</a>
     </div>
 </div>
+
+</body>
+</html>
