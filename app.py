@@ -20,7 +20,7 @@ app.secret_key = os.getenv("SECRET_KEY", "fallback-secret")
 app.permanent_session_lifetime = timedelta(days=7)
 
 app.config['SESSION_COOKIE_HTTPONLY'] = True
-app.config['SESSION_COOKIE_SECURE'] = False
+app.config['SESSION_COOKIE_SECURE'] = True   # ✅ FIXED for Render (HTTPS)
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
 
 # ---------------- BASE URL ----------------
@@ -33,7 +33,10 @@ if not DATABASE_URL:
     raise Exception("DATABASE_URL is missing!")
 
 try:
-    conn = psycopg2.connect(DATABASE_URL)
+    conn = psycopg2.connect(
+        DATABASE_URL,
+        sslmode='require'   # ✅ IMPORTANT FIX
+    )
     cur = conn.cursor()
 
     cur.execute("""
@@ -64,9 +67,11 @@ serializer = URLSafeTimedSerializer(app.secret_key)
 # ---------------- EMAIL FUNCTION ----------------
 def send_email(to, subject, body):
     try:
-        msg = Message(subject,
-                      sender=app.config['MAIL_USERNAME'],
-                      recipients=[to])
+        msg = Message(
+            subject,
+            sender=app.config['MAIL_USERNAME'],
+            recipients=[to]
+        )
         msg.body = body
         mail.send(msg)
     except Exception as e:
@@ -126,30 +131,32 @@ def signup():
         email = request.form.get("email")
         password = request.form.get("password")
 
+        # 🔐 Password rules
         if len(password) < 8:
             return "Min 8 characters"
-
         if not re.search(r"[A-Z]", password):
             return "Need uppercase"
-
         if not re.search(r"[0-9]", password):
             return "Need number"
-
         if not re.search(r"[!@#$%^&*]", password):
             return "Need special char"
 
+        # Check existing email
         cur.execute("SELECT * FROM users WHERE email=%s", (email,))
         if cur.fetchone():
             return "Email exists"
 
+        # Hash password
         hashed = bcrypt.hashpw(password.encode(), bcrypt.gensalt())
 
+        # Insert user
         cur.execute(
             "INSERT INTO users (username, email, password) VALUES (%s, %s, %s)",
             (username, email, hashed.decode())
         )
         conn.commit()
 
+        # Email verification
         token = serializer.dumps(email, salt='email-confirm')
         link = f"{BASE_URL}/verify/{token}"
 
