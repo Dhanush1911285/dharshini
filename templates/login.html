@@ -110,16 +110,20 @@
     {% endwith %}
 
     <form action="/login" method="POST">
-        <input type="email" name="email" placeholder="Username or email address" required>
-
-        <a class="link">Use phone number instead</a>
+        <!-- ✅ MUST match Flask -->
+        <input type="email" name="email" placeholder="Email address" required>
 
         <input type="password" name="password" placeholder="Password" required>
 
         <button type="submit">Log in</button>
     </form>
 
-    <!-- 🔥 SIGNUP LINK ADDED HERE -->
+    <!-- 🔥 Forgot password -->
+    <div class="signup-link">
+        <a href="/forgot">Forgot Password?</a>
+    </div>
+
+    <!-- 🔥 Signup -->
     <div class="signup-link">
         Don't have an account? <a href="/signup">Sign up</a>
     </div>

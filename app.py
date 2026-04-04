@@ -20,27 +20,35 @@ app.secret_key = os.getenv("SECRET_KEY", "fallback-secret")
 app.permanent_session_lifetime = timedelta(days=7)
 
 app.config['SESSION_COOKIE_HTTPONLY'] = True
-app.config['SESSION_COOKIE_SECURE'] = False  # change True in production
+app.config['SESSION_COOKIE_SECURE'] = False
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
 
 # ---------------- BASE URL ----------------
-BASE_URL = os.getenv("BASE_URL")
+BASE_URL = os.getenv("BASE_URL") or "http://localhost:10000"
 
 # ---------------- DB ----------------
 DATABASE_URL = os.getenv("DATABASE_URL")
-conn = psycopg2.connect(DATABASE_URL)
-cur = conn.cursor()
 
-cur.execute("""
-CREATE TABLE IF NOT EXISTS users (
-    id SERIAL PRIMARY KEY,
-    username TEXT,
-    email TEXT UNIQUE,
-    password TEXT,
-    verified BOOLEAN DEFAULT FALSE
-)
-""")
-conn.commit()
+if not DATABASE_URL:
+    raise Exception("DATABASE_URL is missing!")
+
+try:
+    conn = psycopg2.connect(DATABASE_URL)
+    cur = conn.cursor()
+
+    cur.execute("""
+    CREATE TABLE IF NOT EXISTS users (
+        id SERIAL PRIMARY KEY,
+        username TEXT,
+        email TEXT UNIQUE,
+        password TEXT,
+        verified BOOLEAN DEFAULT FALSE
+    )
+    """)
+    conn.commit()
+
+except Exception as e:
+    print("DB ERROR:", e)
 
 # ---------------- MAIL CONFIG ----------------
 app.config['MAIL_SERVER'] = 'smtp.gmail.com'
@@ -55,13 +63,14 @@ serializer = URLSafeTimedSerializer(app.secret_key)
 
 # ---------------- EMAIL FUNCTION ----------------
 def send_email(to, subject, body):
-    msg = Message(
-        subject,
-        sender=app.config['MAIL_USERNAME'],
-        recipients=[to]
-    )
-    msg.body = body
-    mail.send(msg)
+    try:
+        msg = Message(subject,
+                      sender=app.config['MAIL_USERNAME'],
+                      recipients=[to])
+        msg.body = body
+        mail.send(msg)
+    except Exception as e:
+        print("MAIL ERROR:", e)
 
 # ---------------- CLOUDINARY ----------------
 cloudinary.config(
@@ -74,81 +83,82 @@ cloudinary.config(
 
 @app.route('/')
 def index():
-    if "user_id" in session:
-        return redirect('/camera')
     return redirect('/login')
 
 # ---------------- LOGIN ----------------
 @app.route('/login', methods=['GET', 'POST'])
 def login():
-    if request.method == 'GET':
-        return render_template("login.html")
+    try:
+        if request.method == 'GET':
+            return render_template("login.html")
 
-    email = request.form.get("email")
-    password = request.form.get("password")
+        email = request.form.get("email")
+        password = request.form.get("password")
 
-    cur.execute("SELECT * FROM users WHERE email=%s", (email,))
-    user = cur.fetchone()
+        cur.execute("SELECT * FROM users WHERE email=%s", (email,))
+        user = cur.fetchone()
 
-    if user:
-        if not user[4]:
-            flash("Please verify your email first 📧")
-            return redirect('/login')
+        if user:
+            if not user[4]:
+                flash("Verify your email first 📧")
+                return redirect('/login')
 
-        if bcrypt.checkpw(password.encode('utf-8'), user[3].encode('utf-8')):
-            session.permanent = True
-            session['user_id'] = user[0]
-            session['username'] = user[1]
-            return redirect('/camera')
-        else:
-            flash("Wrong password 😬")
-            return redirect('/login')
-    else:
-        flash("User not found 😢")
+            if bcrypt.checkpw(password.encode(), user[3].encode()):
+                session.permanent = True
+                session['user_id'] = user[0]
+                session['username'] = user[1]
+                return redirect('/camera')
+
+        flash("Invalid login ❌")
         return redirect('/login')
+
+    except Exception as e:
+        return f"LOGIN ERROR: {str(e)}"
 
 # ---------------- SIGNUP ----------------
 @app.route('/signup', methods=['GET', 'POST'])
 def signup():
-    if request.method == 'GET':
-        return render_template("signup.html")
+    try:
+        if request.method == 'GET':
+            return render_template("signup.html")
 
-    username = request.form.get("username")
-    email = request.form.get("email")
-    password = request.form.get("password")
+        username = request.form.get("username")
+        email = request.form.get("email")
+        password = request.form.get("password")
 
-    # Password validation
-    if len(password) < 8:
-        return render_template("signup.html", error="Min 8 characters")
-    if not re.search(r"[A-Z]", password):
-        return render_template("signup.html", error="Need uppercase")
-    if not re.search(r"[0-9]", password):
-        return render_template("signup.html", error="Need number")
-    if not re.search(r"[!@#$%^&*]", password):
-        return render_template("signup.html", error="Need special char")
+        if len(password) < 8:
+            return "Min 8 characters"
 
-    # Check existing user
-    cur.execute("SELECT * FROM users WHERE email=%s", (email,))
-    if cur.fetchone():
-        return render_template("signup.html", error="Email already exists")
+        if not re.search(r"[A-Z]", password):
+            return "Need uppercase"
 
-    # Hash password
-    hashed = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt())
+        if not re.search(r"[0-9]", password):
+            return "Need number"
 
-    cur.execute(
-        "INSERT INTO users (username, email, password) VALUES (%s, %s, %s)",
-        (username, email, hashed.decode('utf-8'))
-    )
-    conn.commit()
+        if not re.search(r"[!@#$%^&*]", password):
+            return "Need special char"
 
-    # Send verification email
-    token = serializer.dumps(email, salt='email-confirm')
-    link = f"{BASE_URL}/verify/{token}"
+        cur.execute("SELECT * FROM users WHERE email=%s", (email,))
+        if cur.fetchone():
+            return "Email exists"
 
-    send_email(email, "Verify Email", f"Click to verify: {link}")
+        hashed = bcrypt.hashpw(password.encode(), bcrypt.gensalt())
 
-    flash("Check your email to verify 📧")
-    return redirect('/login')
+        cur.execute(
+            "INSERT INTO users (username, email, password) VALUES (%s, %s, %s)",
+            (username, email, hashed.decode())
+        )
+        conn.commit()
+
+        token = serializer.dumps(email, salt='email-confirm')
+        link = f"{BASE_URL}/verify/{token}"
+
+        send_email(email, "Verify Email", f"Click: {link}")
+
+        return "Signup success! Check email."
+
+    except Exception as e:
+        return f"SIGNUP ERROR: {str(e)}"
 
 # ---------------- VERIFY ----------------
 @app.route('/verify/<token>')
@@ -158,69 +168,15 @@ def verify(token):
         cur.execute("UPDATE users SET verified=TRUE WHERE email=%s", (email,))
         conn.commit()
         return "Email verified 🎉"
-    except:
-        return "Invalid/Expired link"
-
-# ---------------- FORGOT PASSWORD ----------------
-@app.route('/forgot', methods=['GET', 'POST'])
-def forgot():
-    if request.method == 'GET':
-        return render_template("forgot.html")
-
-    email = request.form.get("email")
-
-    token = serializer.dumps(email, salt='reset-password')
-    link = f"{BASE_URL}/reset/{token}"
-
-    send_email(email, "Reset Password", f"Reset here: {link}")
-
-    flash("Reset link sent 📧")
-    return redirect('/login')
-
-# ---------------- RESET PASSWORD ----------------
-@app.route('/reset/<token>', methods=['GET', 'POST'])
-def reset(token):
-    try:
-        email = serializer.loads(token, salt='reset-password', max_age=3600)
-
-        if request.method == 'POST':
-            new_password = request.form.get("password")
-
-            if len(new_password) < 8:
-                return "Min 8 characters"
-            if not re.search(r"[A-Z]", new_password):
-                return "Need uppercase"
-            if not re.search(r"[0-9]", new_password):
-                return "Need number"
-            if not re.search(r"[!@#$%^&*]", new_password):
-                return "Need special char"
-
-            hashed = bcrypt.hashpw(new_password.encode('utf-8'), bcrypt.gensalt())
-
-            cur.execute(
-                "UPDATE users SET password=%s WHERE email=%s",
-                (hashed.decode('utf-8'), email)
-            )
-            conn.commit()
-
-            flash("Password updated ✅")
-            return redirect('/login')
-
-        return '''
-        <form method="POST">
-            <input name="password" placeholder="New password">
-            <button>Reset</button>
-        </form>
-        '''
-    except:
-        return "Invalid/Expired link"
+    except Exception as e:
+        return f"VERIFY ERROR: {str(e)}"
 
 # ---------------- CAMERA ----------------
 @app.route('/camera')
 def camera():
     if 'user_id' not in session:
         return redirect('/login')
-    return render_template("camera.html", username=session['username'])
+    return render_template("camera.html")
 
 # ---------------- UPLOAD ----------------
 @app.route('/upload', methods=['POST'])
