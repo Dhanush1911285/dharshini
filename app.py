@@ -13,6 +13,19 @@ from dotenv import load_dotenv
 # ---------------- LOAD ENV ----------------
 load_dotenv()
 
+# ---------------- APP ----------------
+app = Flask(__name__)
+
+app.secret_key = os.getenv("SECRET_KEY", "fallback-secret")
+app.permanent_session_lifetime = timedelta(days=7)
+
+app.config['SESSION_COOKIE_HTTPONLY'] = True
+app.config['SESSION_COOKIE_SECURE'] = False  # change True in production
+app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
+
+# ---------------- BASE URL ----------------
+BASE_URL = os.getenv("BASE_URL")
+
 # ---------------- DB ----------------
 DATABASE_URL = os.getenv("DATABASE_URL")
 conn = psycopg2.connect(DATABASE_URL)
@@ -28,19 +41,6 @@ CREATE TABLE IF NOT EXISTS users (
 )
 """)
 conn.commit()
-
-# ---------------- APP ----------------
-app = Flask(__name__)
-
-app.secret_key = os.getenv("SECRET_KEY", "fallback-secret")
-app.permanent_session_lifetime = timedelta(days=7)
-
-app.config['SESSION_COOKIE_HTTPONLY'] = True
-app.config['SESSION_COOKIE_SECURE'] = False  # change to True in production
-app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
-
-# ---------------- BASE URL ----------------
-BASE_URL = os.getenv("BASE_URL", "http://localhost:5000")
 
 # ---------------- MAIL CONFIG ----------------
 app.config['MAIL_SERVER'] = 'smtp.gmail.com'
@@ -76,7 +76,7 @@ cloudinary.config(
 def index():
     if "user_id" in session:
         return redirect('/camera')
-    return render_template("login.html")
+    return redirect('/login')
 
 # ---------------- LOGIN ----------------
 @app.route('/login', methods=['GET', 'POST'])
@@ -117,7 +117,7 @@ def signup():
     email = request.form.get("email")
     password = request.form.get("password")
 
-    # Password rules
+    # Password validation
     if len(password) < 8:
         return render_template("signup.html", error="Min 8 characters")
     if not re.search(r"[A-Z]", password):
@@ -127,11 +127,12 @@ def signup():
     if not re.search(r"[!@#$%^&*]", password):
         return render_template("signup.html", error="Need special char")
 
-    # Check duplicate
+    # Check existing user
     cur.execute("SELECT * FROM users WHERE email=%s", (email,))
     if cur.fetchone():
         return render_template("signup.html", error="Email already exists")
 
+    # Hash password
     hashed = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt())
 
     cur.execute(
@@ -160,7 +161,7 @@ def verify(token):
     except:
         return "Invalid/Expired link"
 
-# ---------------- FORGOT ----------------
+# ---------------- FORGOT PASSWORD ----------------
 @app.route('/forgot', methods=['GET', 'POST'])
 def forgot():
     if request.method == 'GET':
@@ -176,7 +177,7 @@ def forgot():
     flash("Reset link sent 📧")
     return redirect('/login')
 
-# ---------------- RESET ----------------
+# ---------------- RESET PASSWORD ----------------
 @app.route('/reset/<token>', methods=['GET', 'POST'])
 def reset(token):
     try:
@@ -196,8 +197,10 @@ def reset(token):
 
             hashed = bcrypt.hashpw(new_password.encode('utf-8'), bcrypt.gensalt())
 
-            cur.execute("UPDATE users SET password=%s WHERE email=%s",
-                        (hashed.decode('utf-8'), email))
+            cur.execute(
+                "UPDATE users SET password=%s WHERE email=%s",
+                (hashed.decode('utf-8'), email)
+            )
             conn.commit()
 
             flash("Password updated ✅")
@@ -232,12 +235,7 @@ def logout():
     session.clear()
     return redirect('/login')
 
-# ---------------- TEST EMAIL ----------------
-@app.route('/test-email')
-def test_email():
-    send_email("your_email@gmail.com", "Test", "It works 😏🔥")
-    return "Email sent!"
-
 # ---------------- RUN ----------------
 if __name__ == "__main__":
-    app.run(debug=True)
+    port = int(os.environ.get("PORT", 10000))
+    app.run(host="0.0.0.0", port=port)
