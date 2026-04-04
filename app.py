@@ -95,33 +95,34 @@ def login():
         email = request.form.get("email")
         password = request.form.get("password")
 
-        # 🔴 FIX: select only needed fields
         cur.execute("SELECT id, username, password, verified FROM users WHERE email=%s", (email,))
         user = cur.fetchone()
 
-        # 🔴 FIX: handle no user
         if not user:
             flash("User not found ❌")
             return redirect('/login')
 
         user_id, username, hashed_pw, verified = user
 
-        # 🔴 FIX: check verification safely
+        # ✅ check verification FIRST
         if not verified:
             flash("Verify your email first 📧")
             return redirect('/login')
 
-        # 🔴 FIX: safe password check
-        if bcrypt.checkpw(password.encode(), hashed_pw.encode()):
-            session.permanent = True
-            session['user_id'] = user_id
-            session['username'] = username
-            return redirect('/camera')
-        else:
+        # ✅ check password
+        if not bcrypt.checkpw(password.encode(), hashed_pw.encode()):
             flash("Wrong password ❌")
             return redirect('/login')
 
+        # ✅ success login
+        session.permanent = True
+        session['user_id'] = user_id
+        session['username'] = username
+
+        return redirect('/camera')
+
     except Exception as e:
+        conn.rollback()
         print("LOGIN ERROR:", e)
         return "Login failed. Check server logs."
 
@@ -151,9 +152,10 @@ def signup():
 
         hashed = bcrypt.hashpw(password.encode(), bcrypt.gensalt())
 
+        # ✅ include verified column
         cur.execute(
-            "INSERT INTO users (username, email, password) VALUES (%s, %s, %s)",
-            (username, email, hashed.decode())
+            "INSERT INTO users (username, email, password, verified) VALUES (%s, %s, %s, %s)",
+            (username, email, hashed.decode(), False)
         )
         conn.commit()
 
@@ -165,6 +167,7 @@ def signup():
         return "Signup success! Check email."
 
     except Exception as e:
+        conn.rollback()
         return f"SIGNUP ERROR: {str(e)}"
 
 # ---------------- VERIFY ----------------
