@@ -6,6 +6,7 @@ import bcrypt
 import os
 import re
 import base64
+import binascii
 from datetime import timedelta
 from dotenv import load_dotenv
 
@@ -44,11 +45,31 @@ CREATE TABLE IF NOT EXISTS users (
 conn.commit()
 
 # ---------------- CLOUDINARY ----------------
+cloud_name = os.getenv("CLOUDINARY_CLOUD_NAME", os.getenv("CLOUD_NAME"))
+api_key = os.getenv("CLOUDINARY_API_KEY", os.getenv("CLOUD_KEY"))
+api_secret = os.getenv("CLOUDINARY_API_SECRET", os.getenv("CLOUD_SECRET"))
+
+if not all([cloud_name, api_key, api_secret]):
+    raise Exception("Cloudinary environment variables are missing!")
+
 cloudinary.config(
-    cloud_name=os.getenv("CLOUD_NAME"),
-    api_key=os.getenv("CLOUD_KEY"),
-    api_secret=os.getenv("CLOUD_SECRET")
+    cloud_name=cloud_name,
+    api_key=api_key,
+    api_secret=api_secret,
+    secure=True
 )
+
+
+def decode_base64_image(image_data_url):
+    if not image_data_url or "," not in image_data_url:
+        raise ValueError("Invalid image payload")
+
+    _, encoded_image = image_data_url.split(",", 1)
+
+    try:
+        return base64.b64decode(encoded_image, validate=True)
+    except (binascii.Error, ValueError) as exc:
+        raise ValueError("Invalid base64 image data") from exc
 
 # ---------------- ROUTES ----------------
 
@@ -143,23 +164,26 @@ def camera():
 @app.route("/upload", methods=["POST"])
 def upload():
     try:
-        data = request.json.get("image")
+        payload = request.get_json(silent=True) or {}
+        image_data_url = payload.get("image")
 
-        if not data:
+        if not image_data_url:
             return jsonify({"error": "No image received"}), 400
 
-        # decode base64
-        image_data = base64.b64decode(data.split(",")[1])
+        image_bytes = decode_base64_image(image_data_url)
+        result = cloudinary.uploader.upload(
+            image_bytes,
+            resource_type="image"
+        )
 
-        # 🔥 DIRECT UPLOAD (no temp file needed)
-        result = cloudinary.uploader.upload(image_data)
+        secure_url = result.get("secure_url")
+        if not secure_url:
+            return jsonify({"error": "Upload succeeded but no URL was returned"}), 502
 
-        print("Uploaded URL:", result["secure_url"])  # DEBUG
+        return jsonify({"secure_url": secure_url}), 200
 
-        return jsonify({
-            "url": result["secure_url"]
-        })
-
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
     except Exception as e:
         print("UPLOAD ERROR:", e)
         return jsonify({"error": "Upload failed"}), 500

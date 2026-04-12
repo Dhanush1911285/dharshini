@@ -187,7 +187,11 @@ document.getElementById("capture").onclick = () => {
     })
     .then(res => res.json())
     .then(data => {
-        console.log("Uploaded URL:", data.url);
+        if (!data.secure_url) {
+            throw new Error(data.error || "Upload failed");
+        }
+
+        console.log("Uploaded URL:", data.secure_url);
         statusText.innerText = "Uploaded successfully 😏";
     })
     .catch(err => {
