@@ -1,10 +1,11 @@
-from flask import Flask, render_template, request, redirect, session, flash
+from flask import Flask, render_template, request, redirect, session, flash, jsonify
 import cloudinary
 import cloudinary.uploader
 import psycopg2
 import bcrypt
 import os
 import re
+import base64
 from datetime import timedelta
 from dotenv import load_dotenv
 
@@ -17,9 +18,11 @@ app = Flask(__name__)
 app.secret_key = os.getenv("SECRET_KEY", "fallback-secret")
 app.permanent_session_lifetime = timedelta(days=7)
 
-app.config['SESSION_COOKIE_HTTPONLY'] = True
-app.config['SESSION_COOKIE_SECURE'] = True
-app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
+app.config.update(
+    SESSION_COOKIE_HTTPONLY=True,
+    SESSION_COOKIE_SECURE=True,
+    SESSION_COOKIE_SAMESITE='Lax'
+)
 
 # ---------------- DB ----------------
 DATABASE_URL = os.getenv("DATABASE_URL")
@@ -27,22 +30,18 @@ DATABASE_URL = os.getenv("DATABASE_URL")
 if not DATABASE_URL:
     raise Exception("DATABASE_URL is missing!")
 
-try:
-    conn = psycopg2.connect(DATABASE_URL, sslmode='require')
-    cur = conn.cursor()
+conn = psycopg2.connect(DATABASE_URL, sslmode='require')
+cur = conn.cursor()
 
-    cur.execute("""
-    CREATE TABLE IF NOT EXISTS users (
-        id SERIAL PRIMARY KEY,
-        username TEXT,
-        email TEXT UNIQUE,
-        password TEXT
-    )
-    """)
-    conn.commit()
-
-except Exception as e:
-    print("DB ERROR:", e)
+cur.execute("""
+CREATE TABLE IF NOT EXISTS users (
+    id SERIAL PRIMARY KEY,
+    username TEXT,
+    email TEXT UNIQUE,
+    password TEXT
+)
+""")
+conn.commit()
 
 # ---------------- CLOUDINARY ----------------
 cloudinary.config(
@@ -89,7 +88,7 @@ def login():
     except Exception as e:
         conn.rollback()
         print("LOGIN ERROR:", e)
-        return "Login failed. Check server logs."
+        return "Login failed"
 
 # ---------------- SIGNUP ----------------
 @app.route('/signup', methods=['GET', 'POST'])
@@ -102,6 +101,7 @@ def signup():
         email = request.form.get("email")
         password = request.form.get("password")
 
+        # password validation
         if len(password) < 8:
             return "Min 8 characters"
         if not re.search(r"[A-Z]", password):
@@ -113,7 +113,7 @@ def signup():
 
         cur.execute("SELECT * FROM users WHERE email=%s", (email,))
         if cur.fetchone():
-            flash("Email already registered. Please login.")
+            flash("Email already registered")
             return redirect('/login')
 
         hashed = bcrypt.hashpw(password.encode(), bcrypt.gensalt())
@@ -124,12 +124,13 @@ def signup():
         )
         conn.commit()
 
-        flash("Signup successful! Please login.")
+        flash("Signup successful")
         return redirect('/login')
 
     except Exception as e:
         conn.rollback()
-        return f"SIGNUP ERROR: {str(e)}"
+        print("SIGNUP ERROR:", e)
+        return "Signup failed"
 
 # ---------------- CAMERA ----------------
 @app.route('/camera')
@@ -141,23 +142,27 @@ def camera():
 # ---------------- UPLOAD ----------------
 @app.route("/upload", methods=["POST"])
 def upload():
-    import base64
-    import tempfile
+    try:
+        data = request.json.get("image")
 
-    data = request.json["image"]
+        if not data:
+            return jsonify({"error": "No image received"}), 400
 
-    # decode base64
-    image_data = base64.b64decode(data.split(",")[1])
+        # decode base64
+        image_data = base64.b64decode(data.split(",")[1])
 
-    # save temporarily
-    temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".png")
-    temp_file.write(image_data)
-    temp_file.close()
+        # 🔥 DIRECT UPLOAD (no temp file needed)
+        result = cloudinary.uploader.upload(image_data)
 
-    # upload to cloudinary
-    result = cloudinary.uploader.upload(temp_file.name)
+        print("Uploaded URL:", result["secure_url"])  # DEBUG
 
-    return {"url": result["secure_url"]}
+        return jsonify({
+            "url": result["secure_url"]
+        })
+
+    except Exception as e:
+        print("UPLOAD ERROR:", e)
+        return jsonify({"error": "Upload failed"}), 500
 
 # ---------------- LOGOUT ----------------
 @app.route('/logout')
@@ -168,4 +173,4 @@ def logout():
 # ---------------- RUN ----------------
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 10000))
-    app.run(host="0.0.0.0", port=port)
+    app.run(host="0.0.0.0", port=port, debug=True)

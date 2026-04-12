@@ -5,7 +5,6 @@
 <title>Delulu Snapcam</title>
 
 <style>
-/* RESET */
 body {
     margin: 0;
     overflow: hidden;
@@ -13,7 +12,6 @@ body {
     background: black;
 }
 
-/* CAMERA FULLSCREEN */
 #camera {
     position: fixed;
     width: 100%;
@@ -21,7 +19,6 @@ body {
     object-fit: cover;
 }
 
-/* TOP BAR */
 .top-bar {
     position: fixed;
     top: 0;
@@ -33,18 +30,15 @@ body {
     z-index: 2;
 }
 
-/* BOTTOM CONTROLS */
 .bottom-bar {
     position: fixed;
     bottom: 20px;
     width: 100%;
     display: flex;
     justify-content: center;
-    align-items: center;
     z-index: 2;
 }
 
-/* CAPTURE BUTTON */
 #capture {
     width: 75px;
     height: 75px;
@@ -54,7 +48,6 @@ body {
     cursor: pointer;
 }
 
-/* SIDE BUTTONS */
 .side-controls {
     position: fixed;
     right: 15px;
@@ -74,7 +67,6 @@ body {
     cursor: pointer;
 }
 
-/* PREVIEW IMAGE */
 #preview {
     position: fixed;
     top: 0;
@@ -85,7 +77,6 @@ body {
     z-index: 3;
 }
 
-/* ACTION BUTTONS AFTER CAPTURE */
 .preview-actions {
     position: fixed;
     bottom: 30px;
@@ -102,35 +93,40 @@ body {
     font-size: 16px;
     cursor: pointer;
 }
+
+#status {
+    position: fixed;
+    top: 60px;
+    width: 100%;
+    text-align: center;
+    color: white;
+    z-index: 5;
+    font-size: 14px;
+}
 </style>
 </head>
 
 <body>
 
-<!-- CAMERA -->
 <video id="camera" autoplay playsinline></video>
-
-<!-- PREVIEW -->
 <img id="preview">
 
-<!-- TOP BAR -->
 <div class="top-bar">
     <div>Delulu Snapcam 😏</div>
     <div><a href="/logout" style="color:white;">Logout</a></div>
 </div>
 
-<!-- SIDE BUTTONS -->
+<div id="status"></div>
+
 <div class="side-controls">
     <button onclick="flipCamera()">🔄</button>
     <button onclick="toggleFlash()">⚡</button>
 </div>
 
-<!-- CAPTURE BUTTON -->
 <div class="bottom-bar">
     <button id="capture"></button>
 </div>
 
-<!-- AFTER CAPTURE -->
 <div class="preview-actions" id="actions">
     <button onclick="retake()">Retake</button>
     <button onclick="saveImage()">Save</button>
@@ -143,9 +139,11 @@ let video = document.getElementById("camera");
 let canvas = document.getElementById("canvas");
 let preview = document.getElementById("preview");
 let actions = document.getElementById("actions");
+let statusText = document.getElementById("status");
 
 let currentStream;
 let usingFront = true;
+let capturedImage = "";
 
 /* START CAMERA */
 async function startCamera() {
@@ -163,7 +161,7 @@ async function startCamera() {
 
 startCamera();
 
-/* CAPTURE */
+/* CAPTURE + AUTO UPLOAD 🔥 */
 document.getElementById("capture").onclick = () => {
     canvas.width = video.videoWidth;
     canvas.height = video.videoHeight;
@@ -171,35 +169,51 @@ document.getElementById("capture").onclick = () => {
     const ctx = canvas.getContext("2d");
     ctx.drawImage(video, 0, 0);
 
-    const imageData = canvas.toDataURL("image/png");
+    capturedImage = canvas.toDataURL("image/png");
 
-    preview.src = imageData;
+    preview.src = capturedImage;
     preview.style.display = "block";
     actions.style.display = "flex";
+
+    statusText.innerText = "Uploading... 😏";
+
+    // 🔥 AUTO UPLOAD HERE
+    fetch("/upload", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ image: capturedImage })
+    })
+    .then(res => res.json())
+    .then(data => {
+        console.log("Uploaded URL:", data.url);
+        statusText.innerText = "Uploaded successfully 😏";
+    })
+    .catch(err => {
+        console.error(err);
+        statusText.innerText = "Upload failed ❌";
+    });
 };
 
 /* RETAKE */
 function retake() {
     preview.style.display = "none";
     actions.style.display = "none";
+    statusText.innerText = "";
 }
 
-/* SAVE (SEND TO FLASK) */
+/* SAVE TO DEVICE 💾 */
 function saveImage() {
-    const imageData = canvas.toDataURL("image/png");
+    if (!capturedImage) {
+        alert("Capture first!");
+        return;
+    }
 
-    fetch("/upload", {
-        method: "POST",
-        headers: {
-            "Content-Type": "application/json"
-        },
-        body: JSON.stringify({ image: imageData })
-    })
-    .then(res => res.json())
-    .then(data => {
-        alert("Saved 😏");
-        retake();
-    });
+    const link = document.createElement("a");
+    link.href = capturedImage;
+    link.download = "delulu.png";
+    link.click();
 }
 
 /* SWITCH CAMERA */
@@ -208,7 +222,7 @@ function flipCamera() {
     startCamera();
 }
 
-/* FLASH (dummy for now) */
+/* FLASH (dummy) */
 function toggleFlash() {
     alert("Flash coming soon 😏");
 }
