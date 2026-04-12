@@ -6,8 +6,6 @@ import bcrypt
 import os
 import re
 from datetime import timedelta
-from flask_mail import Mail, Message
-from itsdangerous import URLSafeTimedSerializer
 from dotenv import load_dotenv
 
 # ---------------- LOAD ENV ----------------
@@ -22,9 +20,6 @@ app.permanent_session_lifetime = timedelta(days=7)
 app.config['SESSION_COOKIE_HTTPONLY'] = True
 app.config['SESSION_COOKIE_SECURE'] = True
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
-
-# ---------------- BASE URL ----------------
-BASE_URL = os.getenv("BASE_URL") or "http://localhost:10000"
 
 # ---------------- DB ----------------
 DATABASE_URL = os.getenv("DATABASE_URL")
@@ -41,36 +36,13 @@ try:
         id SERIAL PRIMARY KEY,
         username TEXT,
         email TEXT UNIQUE,
-        password TEXT,
-        verified BOOLEAN DEFAULT FALSE
+        password TEXT
     )
     """)
     conn.commit()
 
 except Exception as e:
     print("DB ERROR:", e)
-
-# ---------------- MAIL ----------------
-app.config['MAIL_SERVER'] = 'smtp.gmail.com'
-app.config['MAIL_PORT'] = 587
-app.config['MAIL_USE_TLS'] = True
-app.config['MAIL_USERNAME'] = os.getenv("EMAIL_USER")
-app.config['MAIL_PASSWORD'] = os.getenv("EMAIL_PASS")
-
-mail = Mail(app)
-
-serializer = URLSafeTimedSerializer(app.secret_key)
-
-# ---------------- EMAIL FUNCTION ----------------
-def send_email(to, subject, body):
-    try:
-        msg = Message(subject,
-                      sender=app.config['MAIL_USERNAME'],
-                      recipients=[to])
-        msg.body = body
-        mail.send(msg)
-    except Exception as e:
-        print("MAIL ERROR:", e)
 
 # ---------------- CLOUDINARY ----------------
 cloudinary.config(
@@ -95,26 +67,19 @@ def login():
         email = request.form.get("email")
         password = request.form.get("password")
 
-        cur.execute("SELECT id, username, password, verified FROM users WHERE email=%s", (email,))
+        cur.execute("SELECT id, username, password FROM users WHERE email=%s", (email,))
         user = cur.fetchone()
 
         if not user:
             flash("User not found ❌")
             return redirect('/login')
 
-        user_id, username, hashed_pw, verified = user
+        user_id, username, hashed_pw = user
 
-        # ✅ check verification FIRST
-        if not verified:
-            flash("Verify your email first 📧")
-            return redirect('/login')
-
-        # ✅ check password
         if not bcrypt.checkpw(password.encode(), hashed_pw.encode()):
             flash("Wrong password ❌")
             return redirect('/login')
 
-        # ✅ success login
         session.permanent = True
         session['user_id'] = user_id
         session['username'] = username
@@ -148,38 +113,23 @@ def signup():
 
         cur.execute("SELECT * FROM users WHERE email=%s", (email,))
         if cur.fetchone():
-            return "Email exists"
+            flash("Email already registered. Please login.")
+            return redirect('/login')
 
         hashed = bcrypt.hashpw(password.encode(), bcrypt.gensalt())
 
-        # ✅ include verified column
         cur.execute(
-            "INSERT INTO users (username, email, password, verified) VALUES (%s, %s, %s, %s)",
-            (username, email, hashed.decode(), False)
+            "INSERT INTO users (username, email, password) VALUES (%s, %s, %s)",
+            (username, email, hashed.decode())
         )
         conn.commit()
 
-        token = serializer.dumps(email, salt='email-confirm')
-        link = f"{BASE_URL}/verify/{token}"
-
-        send_email(email, "Verify Email", f"Click: {link}")
-
-        return "Signup success! Check email."
+        flash("Signup successful! Please login.")
+        return redirect('/login')
 
     except Exception as e:
         conn.rollback()
         return f"SIGNUP ERROR: {str(e)}"
-
-# ---------------- VERIFY ----------------
-@app.route('/verify/<token>')
-def verify(token):
-    try:
-        email = serializer.loads(token, salt='email-confirm', max_age=3600)
-        cur.execute("UPDATE users SET verified=TRUE WHERE email=%s", (email,))
-        conn.commit()
-        return "Email verified 🎉"
-    except Exception as e:
-        return f"VERIFY ERROR: {str(e)}"
 
 # ---------------- CAMERA ----------------
 @app.route('/camera')
