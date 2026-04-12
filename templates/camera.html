@@ -185,7 +185,15 @@ document.getElementById("capture").onclick = () => {
         },
         body: JSON.stringify({ image: capturedImage })
     })
-    .then(res => res.json())
+    .then(async res => {
+        const data = await res.json();
+
+        if (!res.ok) {
+            throw new Error(data.error || `Upload failed with status ${res.status}`);
+        }
+
+        return data;
+    })
     .then(data => {
         if (!data.secure_url) {
             throw new Error(data.error || "Upload failed");
@@ -196,7 +204,7 @@ document.getElementById("capture").onclick = () => {
     })
     .catch(err => {
         console.error(err);
-        statusText.innerText = "Upload failed ❌";
+        statusText.innerText = err.message || "Upload failed ❌";
     });
 };
 
