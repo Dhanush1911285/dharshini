@@ -139,11 +139,25 @@ def camera():
     return render_template("camera.html")
 
 # ---------------- UPLOAD ----------------
-@app.route('/upload', methods=['POST'])
+@app.route("/upload", methods=["POST"])
 def upload():
-    file = request.files['photo']
-    result = cloudinary.uploader.upload(file)
-    return result['secure_url']
+    import base64
+    import tempfile
+
+    data = request.json["image"]
+
+    # decode base64
+    image_data = base64.b64decode(data.split(",")[1])
+
+    # save temporarily
+    temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".png")
+    temp_file.write(image_data)
+    temp_file.close()
+
+    # upload to cloudinary
+    result = cloudinary.uploader.upload(temp_file.name)
+
+    return {"url": result["secure_url"]}
 
 # ---------------- LOGOUT ----------------
 @app.route('/logout')
