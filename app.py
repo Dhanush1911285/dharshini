@@ -12,6 +12,7 @@ import io
 import logging
 import time
 from datetime import timedelta
+from datetime import datetime
 from dotenv import load_dotenv
 from werkzeug.middleware.proxy_fix import ProxyFix
 from pathlib import Path
@@ -230,22 +231,21 @@ def save_image():
 @app.route("/upload", methods=["POST"])
 def upload():
     try:
-        payload = request.get_json(silent=True) or {}
-        image_data_url = payload.get("image")
-
-        if not image_data_url:
-            app.logger.error("UPLOAD ERROR: missing image field in JSON payload")
+        data = request.get_json(silent=True) or {}
+        image = data.get("image")
+        if not image or "," not in image:
             return jsonify({"error": "No image received"}), 400
 
-        image_bytes = decode_base64_image(image_data_url)
-        filepath = SAVE_DIR / "captured.png"
-        filepath.write_bytes(image_bytes)
-        app.logger.info("UPLOAD: saved captured frame locally at %s", filepath)
-        return jsonify({"status": "uploaded"}), 200
+        image_data = base64.b64decode(image.split(",", 1)[1])
 
-    except ValueError as e:
-        app.logger.exception("UPLOAD ERROR: invalid image payload")
-        return jsonify({"error": str(e)}), 400
+        uploads_dir = Path(BASE_DIR) / "uploads"
+        uploads_dir.mkdir(exist_ok=True)
+
+        filename = uploads_dir / f"{datetime.now().strftime('%Y%m%d_%H%M%S_%f')}.jpg"
+        with open(filename, "wb") as f:
+            f.write(image_data)
+
+        return jsonify({"status": "ok"}), 200
     except Exception as e:
         app.logger.exception("UPLOAD ERROR: unexpected failure during upload")
         return jsonify({"error": f"Upload failed: {str(e)}"}), 500

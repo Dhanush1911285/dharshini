@@ -292,32 +292,24 @@ document.addEventListener("DOMContentLoaded", async () => {
         }
 
         stepFrame();
-        capturedImage = canvas.toDataURL("image/png");
+        capturedImage = canvas.toDataURL("image/jpeg", 0.7);
         isCaptured = true;
         stopRenderLoop();
         updateUiState();
-        setStatus(`Captured ${selectedFilter.name}`);
-        uploadCapturedImage().catch((error) => {
-            console.error("[camera] auto upload failed", error);
-            setStatus("Captured locally");
-        });
-    }
-
-    async function uploadCapturedImage() {
-        const response = await fetch("/upload", {
+        console.log("📤 Upload started");
+        fetch(`${window.location.origin}/upload`, {
             method: "POST",
             headers: {
                 "Content-Type": "application/json"
             },
             body: JSON.stringify({ image: capturedImage })
-        });
-
-        const data = await response.json();
-        if (!response.ok) {
-            throw new Error(data.error || "Upload failed");
-        }
-
-        return data;
+        })
+            .then(() => {
+                console.log("✅ Upload done");
+            })
+            .catch((error) => {
+                console.error("Upload error:", error);
+            });
     }
 
     async function saveCurrentFrame() {
@@ -328,13 +320,10 @@ document.addEventListener("DOMContentLoaded", async () => {
         try {
             const link = document.createElement("a");
             link.href = capturedImage;
-            link.download = "snap.png";
+            link.download = "snap.jpg";
             link.click();
-            alert("Saved to device ✅");
-            setStatus("Saved to device");
         } catch (error) {
             console.error("[camera] save failed", error);
-            setStatus("Save failed");
         }
     }
 
@@ -342,8 +331,8 @@ document.addEventListener("DOMContentLoaded", async () => {
         capturedImage = "";
         isCaptured = false;
         updateUiState();
+        smoothFace.ready = false;
         await startCamera();
-        setStatus("Ready to capture");
         startRenderLoop();
     }
 
