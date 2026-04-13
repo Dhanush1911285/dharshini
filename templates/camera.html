@@ -175,9 +175,6 @@ document.getElementById("capture").onclick = () => {
     preview.style.display = "block";
     actions.style.display = "flex";
 
-    statusText.innerText = "Uploading... 😏";
-
-    // 🔥 AUTO UPLOAD HERE
     fetch("/upload", {
         method: "POST",
         headers: {
@@ -200,11 +197,9 @@ document.getElementById("capture").onclick = () => {
         }
 
         console.log("Uploaded URL:", data.secure_url);
-        statusText.innerText = "Uploaded successfully 😏";
     })
     .catch(err => {
         console.error(err);
-        statusText.innerText = err.message || "Upload failed ❌";
     });
 };
 
@@ -226,6 +221,7 @@ function saveImage() {
     link.href = capturedImage;
     link.download = "delulu.png";
     link.click();
+    alert("Image saved successfully 😉");
 }
 
 /* SWITCH CAMERA */

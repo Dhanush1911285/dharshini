@@ -12,6 +12,7 @@ import io
 import logging
 from datetime import timedelta
 from dotenv import load_dotenv
+from werkzeug.middleware.proxy_fix import ProxyFix
 
 # ---------------- LOAD ENV ----------------
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -20,12 +21,24 @@ load_dotenv(os.path.join(BASE_DIR, ".env"))
 # ---------------- APP ----------------
 app = Flask(__name__)
 
-app.secret_key = os.getenv("SECRET_KEY", "fallback-secret")
+SECRET_KEY = os.getenv("SECRET_KEY")
+if not SECRET_KEY:
+    raise RuntimeError("SECRET_KEY is missing!")
+
+is_production = (
+    os.getenv("RENDER") == "true"
+    or os.getenv("FLASK_ENV") == "production"
+    or os.getenv("ENV") == "production"
+)
+
+app.secret_key = SECRET_KEY
 app.permanent_session_lifetime = timedelta(days=7)
+app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)
 
 app.config.update(
+    SESSION_PERMANENT=True,
     SESSION_COOKIE_HTTPONLY=True,
-    SESSION_COOKIE_SECURE=True,
+    SESSION_COOKIE_SECURE=is_production,
     SESSION_COOKIE_SAMESITE='Lax'
 )
 app.logger.setLevel(logging.INFO)
