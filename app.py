@@ -10,13 +10,17 @@ import base64
 import binascii
 import io
 import logging
+import time
 from datetime import timedelta
 from dotenv import load_dotenv
 from werkzeug.middleware.proxy_fix import ProxyFix
+from pathlib import Path
 
 # ---------------- LOAD ENV ----------------
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 load_dotenv(os.path.join(BASE_DIR, ".env"))
+SAVE_DIR = Path(BASE_DIR) / "saved_snaps"
+SAVE_DIR.mkdir(exist_ok=True)
 
 # ---------------- APP ----------------
 app = Flask(__name__)
@@ -112,6 +116,8 @@ def decode_base64_image(image_data_url):
 
 @app.route('/')
 def index():
+    if 'user_id' in session:
+        return redirect('/camera')
     return redirect('/login')
 
 # ---------------- LOGIN ----------------
@@ -195,7 +201,30 @@ def signup():
 def camera():
     if 'user_id' not in session:
         return redirect('/login')
-    return render_template("camera.html")
+    return render_template("index.html")
+
+
+@app.route("/save", methods=["POST"])
+def save_image():
+    if 'user_id' not in session:
+        return jsonify({"error": "Unauthorized"}), 401
+
+    try:
+        payload = request.get_json(silent=True) or {}
+        image_data_url = payload.get("image")
+        if not image_data_url:
+            return jsonify({"error": "No image received"}), 400
+
+        image_bytes = decode_base64_image(image_data_url)
+        filename = f"snap_{session['user_id']}_{int(time.time() * 1000)}.png"
+        filepath = SAVE_DIR / filename
+        filepath.write_bytes(image_bytes)
+        return jsonify({"message": "Saved", "filename": filename}), 200
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
+    except Exception as e:
+        app.logger.exception("SAVE ERROR")
+        return jsonify({"error": f"Save failed: {str(e)}"}), 500
 
 # ---------------- UPLOAD ----------------
 @app.route("/upload", methods=["POST"])

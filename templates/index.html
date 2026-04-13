@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Delulu Snap AI Camera</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css', v=2) }}">
+</head>
+<body>
+    <main class="camera-app" id="camera-app">
+        <video id="video" autoplay playsinline muted></video>
+        <canvas id="canvas"></canvas>
+
+        <div class="hud-gradient top"></div>
+        <div class="hud-gradient bottom"></div>
+
+        <header class="camera-topbar">
+            <div class="brand-copy">
+                <div class="eyebrow">Delulu Snap</div>
+                <h1 id="filter-title">Aura Glow</h1>
+            </div>
+            <a class="logout-pill" href="{{ url_for('logout') }}">Logout</a>
+        </header>
+
+        <div class="status-chip" id="status-chip">Booting camera...</div>
+
+        <section class="slider-shell">
+            <div class="filter-slider" id="filter-slider"></div>
+        </section>
+
+        <section class="camera-actions">
+            <button class="action-btn secondary" id="save-btn" type="button">Save</button>
+            <button class="capture-btn" id="capture-btn" type="button" aria-label="Capture filtered frame">
+                <span></span>
+            </button>
+            <button class="action-btn secondary" id="retake-btn" type="button">Retake</button>
+        </section>
+    </main>
+
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
+    <script>
+        window.FILTER_BASE_URL = "{{ url_for('static', filename='filters') }}";
+    </script>
+    <script src="{{ url_for('static', filename='filters.js', v=2) }}"></script>
+    <script src="{{ url_for('static', filename='facemesh.js', v=2) }}"></script>
+    <script src="{{ url_for('static', filename='camera.js', v=2) }}"></script>
+</body>
+</html>

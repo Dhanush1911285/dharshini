@@ -79,3 +79,262 @@ a:hover {
     font-size: 14px;
     color: #94a3b8;
 }
+
+.camera-app {
+    position: fixed;
+    inset: 0;
+    overflow: hidden;
+    background:
+        radial-gradient(circle at top, rgba(255, 177, 113, 0.16), transparent 28%),
+        radial-gradient(circle at bottom, rgba(113, 212, 255, 0.14), transparent 30%),
+        #050608;
+    color: #f5f7fb;
+}
+
+#video,
+#canvas {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+#video {
+    opacity: 0;
+    pointer-events: none;
+}
+
+#canvas {
+    z-index: 1;
+}
+
+.hud-gradient {
+    position: absolute;
+    left: 0;
+    right: 0;
+    pointer-events: none;
+    z-index: 2;
+}
+
+.hud-gradient.top {
+    top: 0;
+    height: 24vh;
+    background: linear-gradient(180deg, rgba(4, 7, 12, 0.82), rgba(4, 7, 12, 0));
+}
+
+.hud-gradient.bottom {
+    bottom: 0;
+    height: 36vh;
+    background: linear-gradient(0deg, rgba(4, 7, 12, 0.94), rgba(4, 7, 12, 0));
+}
+
+.camera-topbar {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 3;
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    padding: 20px;
+}
+
+.brand-copy .eyebrow {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.2em;
+    color: rgba(255, 255, 255, 0.68);
+}
+
+.brand-copy h1 {
+    margin: 6px 0 0;
+    font-size: clamp(1.5rem, 3vw, 2rem);
+    color: #fff;
+}
+
+.logout-pill,
+.status-chip,
+.filter-card,
+.action-btn {
+    backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
+}
+
+.logout-pill {
+    padding: 12px 16px;
+    border-radius: 999px;
+    background: rgba(9, 14, 23, 0.48);
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    color: #fff;
+    text-decoration: none;
+    font-weight: 700;
+}
+
+.status-chip {
+    position: absolute;
+    top: 88px;
+    left: 20px;
+    z-index: 3;
+    padding: 10px 14px;
+    border-radius: 999px;
+    background: rgba(8, 12, 20, 0.5);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    color: rgba(255, 255, 255, 0.9);
+    font-size: 14px;
+}
+
+.slider-shell {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 132px;
+    z-index: 4;
+    overflow: hidden;
+    padding: 0 12px;
+}
+
+.filter-slider {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    width: max-content;
+    margin: 0 auto;
+    padding: 10px 20vw;
+    transition: transform 0.3s ease;
+}
+
+.filter-card {
+    width: 106px;
+    flex: 0 0 auto;
+    padding: 14px 10px;
+    border-radius: 24px;
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    background: rgba(8, 12, 20, 0.54);
+    text-align: center;
+    color: rgba(255, 255, 255, 0.66);
+    cursor: pointer;
+    opacity: 0.46;
+    transform: scale(0.9);
+    transition: transform 0.3s ease, opacity 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.filter-card.active {
+    opacity: 1;
+    transform: scale(1.2);
+    border-color: rgba(125, 230, 255, 0.95);
+    box-shadow: 0 0 0 3px rgba(125, 230, 255, 0.14), 0 16px 32px rgba(0, 0, 0, 0.32);
+    color: #fff;
+}
+
+.filter-swatch {
+    width: 62px;
+    height: 62px;
+    margin: 0 auto 10px;
+    border-radius: 18px;
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    box-shadow: inset 0 0 20px rgba(255, 255, 255, 0.08);
+}
+
+.filter-name {
+    font-size: 13px;
+    font-weight: 700;
+    line-height: 1.15;
+}
+
+.camera-actions {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 26px;
+    z-index: 4;
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    gap: 16px;
+    align-items: center;
+    padding: 0 20px;
+}
+
+.action-btn {
+    min-height: 54px;
+    border-radius: 999px;
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    background: rgba(8, 14, 24, 0.56);
+    color: #fff;
+    font-size: 15px;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.capture-btn {
+    width: 92px;
+    height: 92px;
+    justify-self: center;
+    border: none;
+    border-radius: 50%;
+    background:
+        linear-gradient(145deg, rgba(255, 255, 255, 0.2), rgba(255, 255, 255, 0.04)),
+        rgba(255, 255, 255, 0.08);
+    box-shadow:
+        0 14px 34px rgba(0, 0, 0, 0.28),
+        0 0 0 1px rgba(255, 255, 255, 0.1),
+        inset 0 0 0 8px rgba(255, 255, 255, 0.08);
+    cursor: pointer;
+}
+
+.capture-btn span {
+    display: block;
+    width: 62px;
+    height: 62px;
+    margin: auto;
+    border-radius: 50%;
+    background: linear-gradient(145deg, #ffe7d0, #f5f7ff 54%, #89f1ff);
+}
+
+@media (max-width: 768px) {
+    .camera-topbar {
+        padding: 16px;
+    }
+
+    .status-chip {
+        top: 84px;
+        left: 16px;
+    }
+
+    .slider-shell {
+        bottom: 126px;
+        padding: 0 8px;
+    }
+
+    .filter-card {
+        width: 92px;
+        padding: 12px 8px;
+    }
+
+    .filter-swatch {
+        width: 54px;
+        height: 54px;
+    }
+
+    .camera-actions {
+        bottom: 18px;
+        gap: 12px;
+        padding: 0 16px;
+    }
+
+    .action-btn {
+        min-height: 50px;
+        font-size: 14px;
+    }
+
+    .capture-btn {
+        width: 82px;
+        height: 82px;
+    }
+
+    .capture-btn span {
+        width: 56px;
+        height: 56px;
+    }
+}
