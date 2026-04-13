@@ -71,32 +71,25 @@ conn.commit()
 
 # ---------------- CLOUDINARY ----------------
 def configure_cloudinary():
-    cloud_name = os.getenv("CLOUDINARY_CLOUD_NAME")
-    api_key = os.getenv("CLOUDINARY_API_KEY")
-    api_secret = os.getenv("CLOUDINARY_API_SECRET")
-
-    print("Cloud Name:", os.getenv("CLOUDINARY_CLOUD_NAME"))
+    cloudinary.config(
+        cloud_name=os.getenv("CLOUDINARY_CLOUD_NAME"),
+        api_key=os.getenv("CLOUDINARY_API_KEY"),
+        api_secret=os.getenv("CLOUDINARY_API_SECRET")
+    )
+    print("Cloud:", os.getenv("CLOUDINARY_CLOUD_NAME"))
 
     missing = []
-    if not cloud_name:
+    if not os.getenv("CLOUDINARY_CLOUD_NAME"):
         missing.append("CLOUDINARY_CLOUD_NAME")
-    if not api_key:
+    if not os.getenv("CLOUDINARY_API_KEY"):
         missing.append("CLOUDINARY_API_KEY")
-    if not api_secret:
+    if not os.getenv("CLOUDINARY_API_SECRET"):
         missing.append("CLOUDINARY_API_SECRET")
 
     if missing:
         raise RuntimeError(
             "Missing Cloudinary environment variables: " + ", ".join(missing)
         )
-
-    cloudinary.config(
-        cloud_name=os.getenv("CLOUDINARY_CLOUD_NAME"),
-        api_key=os.getenv("CLOUDINARY_API_KEY"),
-        api_secret=os.getenv("CLOUDINARY_API_SECRET")
-    )
-
-    return {"cloud_name": cloud_name, "api_key": api_key, "api_secret": api_secret}
 
 
 def decode_base64_image(image_data_url):
@@ -231,34 +224,40 @@ def save_image():
 @app.route("/upload", methods=["POST"])
 def upload():
     try:
-        print("📥 Upload request received")
+        configure_cloudinary()
+        print("Cloud name:", os.getenv("CLOUDINARY_CLOUD_NAME"))
+        print("API key exists:", bool(os.getenv("CLOUDINARY_API_KEY")))
+        print("API secret exists:", bool(os.getenv("CLOUDINARY_API_SECRET")))
+        print("1️⃣ Upload route hit")
 
         data = request.get_json(force=True)
+        print("2️⃣ JSON received:", bool(data))
 
         if not data or "image" not in data:
             print("❌ No image key")
             return jsonify({"error": "No image"}), 400
 
-        raw = data["image"]
+        image_data = data["image"]
+        print("3️⃣ Image length:", len(image_data))
+        print("4️⃣ Prefix:", image_data[:30])
 
-        if "," not in raw:
+        if not image_data.startswith("data:image"):
             print("❌ Invalid base64 format")
             return jsonify({"error": "Invalid format"}), 400
 
-        image_data = raw.split(",", 1)[1]
-        decoded = base64.b64decode(image_data)
+        try:
+            print("5️⃣ Uploading to Cloudinary...")
+            result = cloudinary.uploader.upload(
+                image_data,
+                folder="snapcam",
+                resource_type="image"
+            )
+            print("6️⃣ Cloudinary success:", result.get("secure_url"))
+        except Exception as e:
+            print("❌ Cloudinary ERROR:", str(e))
+            return jsonify({"error": str(e)}), 500
 
-        uploads_dir = Path(BASE_DIR) / "uploads"
-        uploads_dir.mkdir(exist_ok=True)
-
-        filename = uploads_dir / f"{datetime.now().strftime('%Y%m%d_%H%M%S')}.jpg"
-
-        with open(filename, "wb") as f:
-            f.write(decoded)
-
-        print("✅ Saved:", filename)
-
-        return jsonify({"status": "success"}), 200
+        return jsonify({"status": "success", "url": result.get("secure_url")}), 200
     except Exception as e:
         print("❌ ERROR:", str(e))
         return jsonify({"error": str(e)}), 500
