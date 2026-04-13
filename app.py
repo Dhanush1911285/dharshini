@@ -230,7 +230,6 @@ def save_image():
 @app.route("/upload", methods=["POST"])
 def upload():
     try:
-        config = configure_cloudinary()
         payload = request.get_json(silent=True) or {}
         image_data_url = payload.get("image")
 
@@ -239,37 +238,16 @@ def upload():
             return jsonify({"error": "No image received"}), 400
 
         image_bytes = decode_base64_image(image_data_url)
-        app.logger.info(
-            "Upload request received: payload_chars=%s decoded_bytes=%s cloud_name=%s api_key_present=%s api_secret_present=%s",
-            len(image_data_url),
-            len(image_bytes),
-            config["cloud_name"],
-            bool(config["api_key"]),
-            bool(config["api_secret"])
-        )
-
-        try:
-            result = cloudinary.uploader.upload(image_data_url)
-        except Exception as e:
-            app.logger.exception("UPLOAD ERROR: Cloudinary upload failed")
-            return jsonify({"error": f"Cloudinary upload failed: {str(e)}"}), 500
-
-        secure_url = result.get("secure_url")
-        if not secure_url:
-            app.logger.error("UPLOAD ERROR: Cloudinary response missing secure_url: %s", result)
-            return jsonify({"error": "Upload succeeded but no URL was returned"}), 502
-
-        app.logger.info("Upload successful: secure_url=%s public_id=%s", secure_url, result.get("public_id"))
-        return jsonify({"secure_url": secure_url}), 200
+        filepath = SAVE_DIR / "captured.png"
+        filepath.write_bytes(image_bytes)
+        app.logger.info("UPLOAD: saved captured frame locally at %s", filepath)
+        return jsonify({"status": "uploaded"}), 200
 
     except ValueError as e:
         app.logger.exception("UPLOAD ERROR: invalid image payload")
         return jsonify({"error": str(e)}), 400
-    except RuntimeError as e:
-        app.logger.exception("UPLOAD ERROR: Cloudinary configuration issue")
-        return jsonify({"error": str(e)}), 500
     except Exception as e:
-        app.logger.exception("UPLOAD ERROR: unexpected failure during Cloudinary upload")
+        app.logger.exception("UPLOAD ERROR: unexpected failure during upload")
         return jsonify({"error": f"Upload failed: {str(e)}"}), 500
 
 # ---------------- LOGOUT ----------------

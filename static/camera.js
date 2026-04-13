@@ -22,6 +22,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     let filterImages = {};
     let lastTap = 0;
     let animationFrameId = null;
+    let currentStreamToken = 0;
 
     const smoothFace = {
         eyeCenterX: 0,
@@ -99,6 +100,8 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
 
     async function startCamera() {
+        currentStreamToken += 1;
+        const streamToken = currentStreamToken;
         if (stream) {
             stream.getTracks().forEach((track) => track.stop());
         }
@@ -117,6 +120,9 @@ document.addEventListener("DOMContentLoaded", async () => {
 
             video.srcObject = stream;
             await video.play();
+            if (streamToken !== currentStreamToken) {
+                return;
+            }
             faceTracker = window.createFaceTracker(video);
             setStatus(usingFront ? "Front camera live" : "Back camera live");
         } catch (error) {
@@ -291,6 +297,10 @@ document.addEventListener("DOMContentLoaded", async () => {
         stopRenderLoop();
         updateUiState();
         setStatus(`Captured ${selectedFilter.name}`);
+        uploadCapturedImage().catch((error) => {
+            console.error("[camera] auto upload failed", error);
+            setStatus("Captured locally");
+        });
     }
 
     async function uploadCapturedImage() {
@@ -316,32 +326,23 @@ document.addEventListener("DOMContentLoaded", async () => {
         }
 
         try {
-            setStatus("Uploading snap");
-            const uploadData = await uploadCapturedImage();
-            const savedResponse = await fetch("/save", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json"
-                },
-                body: JSON.stringify({ image: capturedImage })
-            });
-            const savedData = await savedResponse.json();
-            if (!savedResponse.ok) {
-                throw new Error(savedData.error || "Save failed");
-            }
-
-            setStatus(uploadData.secure_url ? "Uploaded to cloud" : "Saved snap");
-            alert("Image saved successfully 😉");
+            const link = document.createElement("a");
+            link.href = capturedImage;
+            link.download = "snap.png";
+            link.click();
+            alert("Saved to device ✅");
+            setStatus("Saved to device");
         } catch (error) {
             console.error("[camera] save failed", error);
             setStatus("Save failed");
         }
     }
 
-    function retake() {
+    async function retake() {
         capturedImage = "";
         isCaptured = false;
         updateUiState();
+        await startCamera();
         setStatus("Ready to capture");
         startRenderLoop();
     }
@@ -371,7 +372,12 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     captureBtn.addEventListener("click", captureCurrentFrame);
     saveBtn.addEventListener("click", saveCurrentFrame);
-    retakeBtn.addEventListener("click", retake);
+    retakeBtn.addEventListener("click", () => {
+        retake().catch((error) => {
+            console.error("[camera] retake failed", error);
+            setStatus("Retake failed");
+        });
+    });
 
     window.addEventListener("resize", () => {
         resizeCanvas();
