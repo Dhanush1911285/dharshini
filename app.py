@@ -50,30 +50,33 @@ CREATE TABLE IF NOT EXISTS users (
 conn.commit()
 
 # ---------------- CLOUDINARY ----------------
-def get_cloudinary_config():
-    config = {
-        "cloud_name": os.getenv("CLOUDINARY_CLOUD_NAME", os.getenv("CLOUD_NAME")),
-        "api_key": os.getenv("CLOUDINARY_API_KEY", os.getenv("CLOUD_KEY")),
-        "api_secret": os.getenv("CLOUDINARY_API_SECRET", os.getenv("CLOUD_SECRET")),
-    }
-    missing = [key for key, value in config.items() if not value]
-    return config, missing
-
-
 def configure_cloudinary():
-    config, missing = get_cloudinary_config()
+    cloud_name = os.getenv("CLOUDINARY_CLOUD_NAME")
+    api_key = os.getenv("CLOUDINARY_API_KEY")
+    api_secret = os.getenv("CLOUDINARY_API_SECRET")
+
+    print("Cloud Name:", os.getenv("CLOUDINARY_CLOUD_NAME"))
+
+    missing = []
+    if not cloud_name:
+        missing.append("CLOUDINARY_CLOUD_NAME")
+    if not api_key:
+        missing.append("CLOUDINARY_API_KEY")
+    if not api_secret:
+        missing.append("CLOUDINARY_API_SECRET")
+
     if missing:
         raise RuntimeError(
             "Missing Cloudinary environment variables: " + ", ".join(missing)
         )
 
     cloudinary.config(
-        cloud_name=config["cloud_name"],
-        api_key=config["api_key"],
-        api_secret=config["api_secret"],
-        secure=True
+        cloud_name=os.getenv("CLOUDINARY_CLOUD_NAME"),
+        api_key=os.getenv("CLOUDINARY_API_KEY"),
+        api_secret=os.getenv("CLOUDINARY_API_SECRET")
     )
-    return config
+
+    return {"cloud_name": cloud_name, "api_key": api_key, "api_secret": api_secret}
 
 
 def decode_base64_image(image_data_url):
@@ -192,6 +195,7 @@ def upload():
             return jsonify({"error": "No image received"}), 400
 
         image_bytes = decode_base64_image(image_data_url)
+        file = io.BytesIO(image_bytes)
         app.logger.info(
             "Upload request received: payload_chars=%s decoded_bytes=%s cloud_name=%s api_key_present=%s api_secret_present=%s",
             len(image_data_url),
@@ -201,11 +205,11 @@ def upload():
             bool(config["api_secret"])
         )
 
-        result = cloudinary.uploader.upload(
-            io.BytesIO(image_bytes),
-            resource_type="image",
-            folder="delulu_snap"
-        )
+        try:
+            result = cloudinary.uploader.upload(file)
+        except Exception as e:
+            app.logger.exception("UPLOAD ERROR: Cloudinary upload failed")
+            return jsonify({"error": f"Cloudinary upload failed: {str(e)}"}), 500
 
         secure_url = result.get("secure_url")
         if not secure_url:
