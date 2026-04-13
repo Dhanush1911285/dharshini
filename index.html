@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Snap Aura Camera</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="app-shell">
+    <video id="cameraFeed" autoplay playsinline muted></video>
+    <canvas id="renderCanvas"></canvas>
+
+    <div class="chrome chrome-top"></div>
+    <div class="chrome chrome-bottom"></div>
+
+    <header class="top-hud">
+      <div class="brand-block">
+        <div class="brand-kicker">Aura Lens</div>
+        <div class="brand-title">Realtime Portrait Studio</div>
+      </div>
+      <div class="status-pill" id="statusPill">
+        <span class="dot"></span>
+        <span id="statusText">Initializing camera</span>
+      </div>
+    </header>
+
+    <aside class="side-tools">
+      <button class="tool-btn" id="switchBtn" type="button" aria-label="Switch camera">Flip</button>
+      <button class="tool-btn" id="faceBtn" type="button" aria-label="Toggle face effects">Face</button>
+      <button class="tool-btn" id="hudBtn" type="button" aria-label="Toggle cinematic hud">HUD</button>
+    </aside>
+
+    <section class="filter-banner">
+      <div class="banner-label">Current Lens</div>
+      <div class="filter-name" id="filterName">Raw Portrait</div>
+    </section>
+
+    <section class="camera-stage" id="cameraStage">
+      <div class="gesture-hint">Swipe to change lens. Double tap to switch camera.</div>
+    </section>
+
+    <section class="bottom-panel">
+      <div class="carousel-wrap">
+        <div class="filter-carousel" id="filterCarousel"></div>
+      </div>
+
+      <div class="control-row">
+        <button class="secondary-btn" id="saveBtn" type="button">Save Frame</button>
+        <button class="capture-btn" id="captureBtn" type="button" aria-label="Capture frame">
+          <span></span>
+        </button>
+        <button class="secondary-btn" id="toggleRecordBtn" type="button">REC HUD</button>
+      </div>
+    </section>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js"></script>
+  <script src="script.js"></script>
+</body>
+</html>
