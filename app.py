@@ -239,7 +239,6 @@ def upload():
             return jsonify({"error": "No image received"}), 400
 
         image_bytes = decode_base64_image(image_data_url)
-        file = io.BytesIO(image_bytes)
         app.logger.info(
             "Upload request received: payload_chars=%s decoded_bytes=%s cloud_name=%s api_key_present=%s api_secret_present=%s",
             len(image_data_url),
@@ -250,7 +249,7 @@ def upload():
         )
 
         try:
-            result = cloudinary.uploader.upload(file)
+            result = cloudinary.uploader.upload(image_data_url)
         except Exception as e:
             app.logger.exception("UPLOAD ERROR: Cloudinary upload failed")
             return jsonify({"error": f"Cloudinary upload failed: {str(e)}"}), 500

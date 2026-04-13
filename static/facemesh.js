@@ -70,11 +70,15 @@
         const nose = mapPoint(landmarks[1], width, height, mirror);
         const mouthTop = mapPoint(landmarks[13], width, height, mirror);
         const mouthBottom = mapPoint(landmarks[14], width, height, mirror);
+        const leftFace = mapPoint(landmarks[234], width, height, mirror);
+        const rightFace = mapPoint(landmarks[454], width, height, mirror);
 
         const dx = rightEye.x - leftEye.x;
         const dy = rightEye.y - leftEye.y;
         const eyeDistance = Math.hypot(dx, dy);
         const angle = Math.atan2(dy, dx);
+        const faceWidth = Math.hypot(rightFace.x - leftFace.x, rightFace.y - leftFace.y);
+        const mouthGap = Math.hypot(mouthBottom.x - mouthTop.x, mouthBottom.y - mouthTop.y);
         const eyeCenter = {
             x: (leftEye.x + rightEye.x) / 2,
             y: (leftEye.y + rightEye.y) / 2
@@ -88,6 +92,8 @@
             mouthTop,
             mouthBottom,
             eyeDistance,
+            faceWidth,
+            mouthOpen: faceWidth ? mouthGap / faceWidth : 0,
             angle
         };
     }

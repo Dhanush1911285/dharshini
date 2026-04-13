@@ -91,6 +91,24 @@ a:hover {
     color: #f5f7fb;
 }
 
+.camera-app.captured .slider-shell {
+    opacity: 0;
+    pointer-events: none;
+    transform: translateY(20px);
+}
+
+.camera-app.captured .capture-btn {
+    opacity: 0;
+    pointer-events: none;
+    transform: scale(0.88);
+}
+
+.camera-app.captured .hidden-action {
+    opacity: 1;
+    pointer-events: auto;
+    transform: translateY(0);
+}
+
 #video,
 #canvas {
     position: absolute;
@@ -193,6 +211,7 @@ a:hover {
     z-index: 4;
     overflow: hidden;
     padding: 0 12px;
+    transition: opacity 0.3s ease, transform 0.3s ease;
 }
 
 .filter-slider {
@@ -265,6 +284,13 @@ a:hover {
     font-size: 15px;
     font-weight: 700;
     cursor: pointer;
+    transition: opacity 0.25s ease, transform 0.25s ease;
+}
+
+.hidden-action {
+    opacity: 0;
+    pointer-events: none;
+    transform: translateY(10px);
 }
 
 .capture-btn {
@@ -281,6 +307,7 @@ a:hover {
         0 0 0 1px rgba(255, 255, 255, 0.1),
         inset 0 0 0 8px rgba(255, 255, 255, 0.08);
     cursor: pointer;
+    transition: opacity 0.25s ease, transform 0.25s ease;
 }
 
 .capture-btn span {
