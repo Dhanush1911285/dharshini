@@ -39,7 +39,9 @@ app.config.update(
     SESSION_PERMANENT=True,
     SESSION_COOKIE_HTTPONLY=True,
     SESSION_COOKIE_SECURE=is_production,
-    SESSION_COOKIE_SAMESITE='Lax'
+    SESSION_COOKIE_SAMESITE='Lax',
+    TEMPLATES_AUTO_RELOAD=True,
+    SEND_FILE_MAX_AGE_DEFAULT=0
 )
 app.logger.setLevel(logging.INFO)
 

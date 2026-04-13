@@ -1,240 +1,61 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<title>Delulu Snapcam</title>
-
-<style>
-body {
-    margin: 0;
-    overflow: hidden;
-    font-family: Arial, sans-serif;
-    background: black;
-}
-
-#camera {
-    position: fixed;
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-}
-
-.top-bar {
-    position: fixed;
-    top: 0;
-    width: 100%;
-    padding: 15px;
-    display: flex;
-    justify-content: space-between;
-    color: white;
-    z-index: 2;
-}
-
-.bottom-bar {
-    position: fixed;
-    bottom: 20px;
-    width: 100%;
-    display: flex;
-    justify-content: center;
-    z-index: 2;
-}
-
-#capture {
-    width: 75px;
-    height: 75px;
-    border-radius: 50%;
-    border: 5px solid white;
-    background: rgba(255,255,255,0.1);
-    cursor: pointer;
-}
-
-.side-controls {
-    position: fixed;
-    right: 15px;
-    top: 40%;
-    display: flex;
-    flex-direction: column;
-    gap: 20px;
-    z-index: 2;
-}
-
-.side-controls button {
-    background: rgba(0,0,0,0.5);
-    border: none;
-    color: white;
-    padding: 10px;
-    border-radius: 50%;
-    cursor: pointer;
-}
-
-#preview {
-    position: fixed;
-    top: 0;
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    display: none;
-    z-index: 3;
-}
-
-.preview-actions {
-    position: fixed;
-    bottom: 30px;
-    width: 100%;
-    display: none;
-    justify-content: space-around;
-    z-index: 4;
-}
-
-.preview-actions button {
-    padding: 12px 20px;
-    border: none;
-    border-radius: 20px;
-    font-size: 16px;
-    cursor: pointer;
-}
-
-#status {
-    position: fixed;
-    top: 60px;
-    width: 100%;
-    text-align: center;
-    color: white;
-    z-index: 5;
-    font-size: 14px;
-}
-</style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Delulu Snapcam</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/camera.css', v=1) }}">
 </head>
-
 <body>
+    <div class="camera-app">
+        <video id="camera" autoplay playsinline muted></video>
+        <canvas id="camera-canvas"></canvas>
+        <img id="preview" alt="Captured preview">
 
-<video id="camera" autoplay playsinline></video>
-<img id="preview">
+        <div class="camera-overlay top-fade"></div>
+        <div class="camera-overlay bottom-fade"></div>
 
-<div class="top-bar">
-    <div>Delulu Snapcam 😏</div>
-    <div><a href="/logout" style="color:white;">Logout</a></div>
-</div>
+        <header class="top-bar">
+            <div>
+                <div class="brand-label">Delulu Snapcam</div>
+                <div class="filter-title" id="active-filter-name">Normal</div>
+            </div>
+            <a class="logout-link" href="{{ url_for('logout') }}">Logout</a>
+        </header>
 
-<div id="status"></div>
+        <div id="status" class="status-pill">Loading camera...</div>
 
-<div class="side-controls">
-    <button onclick="flipCamera()">🔄</button>
-    <button onclick="toggleFlash()">⚡</button>
-</div>
+        <div class="side-controls">
+            <button type="button" id="flip-btn">Flip</button>
+            <button type="button" id="retake-btn">Retake</button>
+        </div>
 
-<div class="bottom-bar">
-    <button id="capture"></button>
-</div>
+        <section class="filter-bar-shell">
+            <div class="filter-bar" id="filter-bar">
+                <button class="filter-chip active" data-filter="normal" onclick="alert('JS not loaded')">Normal</button>
+                <button class="filter-chip" data-filter="grayscale" onclick="alert('JS not loaded')">Grayscale</button>
+                <button class="filter-chip" data-filter="sepia" onclick="alert('JS not loaded')">Sepia</button>
+                <button class="filter-chip" data-filter="contrast" onclick="alert('JS not loaded')">Contrast</button>
+                <button class="filter-chip" data-filter="bright" onclick="alert('JS not loaded')">Bright</button>
+                <button class="filter-chip" data-filter="cool" onclick="alert('JS not loaded')">Cool</button>
+                <button class="filter-chip" data-filter="warm" onclick="alert('JS not loaded')">Warm</button>
+                <button class="filter-chip" data-filter="blur" onclick="alert('JS not loaded')">Blur</button>
+                <button class="filter-chip" data-filter="vintage" onclick="alert('JS not loaded')">Vintage</button>
+                <button class="filter-chip" data-filter="mono" onclick="alert('JS not loaded')">Mono</button>
+                <button class="filter-chip ai-chip" data-filter="dog" onclick="alert('JS not loaded')">Dog AI</button>
+                <button class="filter-chip ai-chip" data-filter="cat" onclick="alert('JS not loaded')">Cat AI</button>
+                <button class="filter-chip ai-chip" data-filter="glasses" onclick="alert('JS not loaded')">Glasses AI</button>
+                <button class="filter-chip ai-chip" data-filter="crown" onclick="alert('JS not loaded')">Crown AI</button>
+                <button class="filter-chip ai-chip" data-filter="mask" onclick="alert('JS not loaded')">Mask AI</button>
+            </div>
+        </section>
 
-<div class="preview-actions" id="actions">
-    <button onclick="retake()">Retake</button>
-    <button onclick="saveImage()">Save</button>
-</div>
+        <div class="bottom-bar">
+            <button type="button" id="capture">Capture</button>
+            <button type="button" id="save-btn">Save</button>
+        </div>
+    </div>
 
-<canvas id="canvas" style="display:none;"></canvas>
-
-<script>
-let video = document.getElementById("camera");
-let canvas = document.getElementById("canvas");
-let preview = document.getElementById("preview");
-let actions = document.getElementById("actions");
-let statusText = document.getElementById("status");
-
-let currentStream;
-let usingFront = true;
-let capturedImage = "";
-
-/* START CAMERA */
-async function startCamera() {
-    if (currentStream) {
-        currentStream.getTracks().forEach(track => track.stop());
-    }
-
-    const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: usingFront ? "user" : "environment" }
-    });
-
-    currentStream = stream;
-    video.srcObject = stream;
-}
-
-startCamera();
-
-/* CAPTURE + AUTO UPLOAD 🔥 */
-document.getElementById("capture").onclick = () => {
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
-
-    const ctx = canvas.getContext("2d");
-    ctx.drawImage(video, 0, 0);
-
-    capturedImage = canvas.toDataURL("image/png");
-
-    preview.src = capturedImage;
-    preview.style.display = "block";
-    actions.style.display = "flex";
-
-    fetch("/upload", {
-        method: "POST",
-        headers: {
-            "Content-Type": "application/json"
-        },
-        body: JSON.stringify({ image: capturedImage })
-    })
-    .then(async res => {
-        const data = await res.json();
-
-        if (!res.ok) {
-            throw new Error(data.error || `Upload failed with status ${res.status}`);
-        }
-
-        return data;
-    })
-    .then(data => {
-        if (!data.secure_url) {
-            throw new Error(data.error || "Upload failed");
-        }
-
-        console.log("Uploaded URL:", data.secure_url);
-    })
-    .catch(err => {
-        console.error(err);
-    });
-};
-
-/* RETAKE */
-function retake() {
-    preview.style.display = "none";
-    actions.style.display = "none";
-    statusText.innerText = "";
-}
-
-/* SAVE TO DEVICE 💾 */
-function saveImage() {
-    if (!capturedImage) {
-        alert("Capture first!");
-        return;
-    }
-
-    const link = document.createElement("a");
-    link.href = capturedImage;
-    link.download = "delulu.png";
-    link.click();
-    alert("Image saved successfully 😉");
-}
-
-/* SWITCH CAMERA */
-function flipCamera() {
-    usingFront = !usingFront;
-    startCamera();
-}
-
-/* FLASH (dummy) */
-function toggleFlash() {
-    alert("Flash coming soon 😏");
-}
-</script>
-
+    <script src="{{ url_for('static', filename='js/camera.js', v=1) }}"></script>
 </body>
 </html>
