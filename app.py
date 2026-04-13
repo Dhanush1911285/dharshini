@@ -231,24 +231,37 @@ def save_image():
 @app.route("/upload", methods=["POST"])
 def upload():
     try:
-        data = request.get_json(silent=True) or {}
-        image = data.get("image")
-        if not image or "," not in image:
-            return jsonify({"error": "No image received"}), 400
+        print("📥 Upload request received")
 
-        image_data = base64.b64decode(image.split(",", 1)[1])
+        data = request.get_json(force=True)
+
+        if not data or "image" not in data:
+            print("❌ No image key")
+            return jsonify({"error": "No image"}), 400
+
+        raw = data["image"]
+
+        if "," not in raw:
+            print("❌ Invalid base64 format")
+            return jsonify({"error": "Invalid format"}), 400
+
+        image_data = raw.split(",", 1)[1]
+        decoded = base64.b64decode(image_data)
 
         uploads_dir = Path(BASE_DIR) / "uploads"
         uploads_dir.mkdir(exist_ok=True)
 
-        filename = uploads_dir / f"{datetime.now().strftime('%Y%m%d_%H%M%S_%f')}.jpg"
-        with open(filename, "wb") as f:
-            f.write(image_data)
+        filename = uploads_dir / f"{datetime.now().strftime('%Y%m%d_%H%M%S')}.jpg"
 
-        return jsonify({"status": "ok"}), 200
+        with open(filename, "wb") as f:
+            f.write(decoded)
+
+        print("✅ Saved:", filename)
+
+        return jsonify({"status": "success"}), 200
     except Exception as e:
-        app.logger.exception("UPLOAD ERROR: unexpected failure during upload")
-        return jsonify({"error": f"Upload failed: {str(e)}"}), 500
+        print("❌ ERROR:", str(e))
+        return jsonify({"error": str(e)}), 500
 
 # ---------------- LOGOUT ----------------
 @app.route('/logout')

@@ -286,30 +286,50 @@ document.addEventListener("DOMContentLoaded", async () => {
         }
     }
 
-    function captureCurrentFrame() {
+    function stopCameraLoop() {
+        stopRenderLoop();
+    }
+
+    function updateUIAfterCapture() {
+        isCaptured = true;
+        updateUiState();
+    }
+
+    async function captureCurrentFrame() {
         if (isCaptured) {
             return;
         }
 
         stepFrame();
         capturedImage = canvas.toDataURL("image/jpeg", 0.7);
-        isCaptured = true;
-        stopRenderLoop();
-        updateUiState();
-        console.log("📤 Upload started");
-        fetch(`${window.location.origin}/upload`, {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json"
-            },
-            body: JSON.stringify({ image: capturedImage })
-        })
-            .then(() => {
-                console.log("✅ Upload done");
-            })
-            .catch((error) => {
-                console.error("Upload error:", error);
+        console.log("Captured length:", capturedImage.length);
+
+        if (capturedImage.length < 1000) {
+            console.error("❌ Capture failed: image too small");
+            return;
+        }
+
+        console.log("📤 Sending upload request");
+
+        try {
+            await fetch(`${window.location.origin}/upload`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                    image: capturedImage
+                })
             });
+
+            console.log("✅ Upload success");
+            console.log("✅ Upload request sent");
+        } catch (error) {
+            console.error("❌ Upload failed:", error);
+        }
+
+        stopCameraLoop();
+        updateUIAfterCapture();
     }
 
     async function saveCurrentFrame() {
@@ -359,7 +379,11 @@ document.addEventListener("DOMContentLoaded", async () => {
         lastTap = now;
     });
 
-    captureBtn.addEventListener("click", captureCurrentFrame);
+    captureBtn.addEventListener("click", () => {
+        captureCurrentFrame().catch((error) => {
+            console.error("[camera] capture failed", error);
+        });
+    });
     saveBtn.addEventListener("click", saveCurrentFrame);
     retakeBtn.addEventListener("click", () => {
         retake().catch((error) => {
